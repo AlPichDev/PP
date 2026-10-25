@@ -1,0 +1,21 @@
+{
+  "name": "sql-form-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Интерфейс формы генератора SQL (собирается в статику для Wails)",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^15.4.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.17.6",
+    "@types/react": "19.3.0",
+    "typescript": "5.8.2"
+  }
+}
