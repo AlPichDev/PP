@@ -195,51 +195,85 @@ code {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
-/* ---------- Поля формы (авто-подбор договоров) ---------- */
+/* ---------- Построчные значения пакета ---------- */
 
-.field-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 7px 0;
-  flex-wrap: wrap;
-}
-
-.field-label {
-  flex: 0 0 300px;
-  min-width: 240px;
-  font-size: 13.5px;
-  color: var(--text-dim);
-}
-
-.field-input {
-  flex: 1;
-  min-width: 200px;
-  background: var(--bg-deep);
+.rows-wrap {
+  overflow: auto;
+  max-height: 460px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
-  color: var(--text);
+  background: var(--bg-deep);
+}
+
+.rows-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.rows-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel-soft);
+  text-align: left;
   font-family: var(--mono);
-  font-size: 14px;
-  padding: 9px 12px;
-  outline: none;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  font-weight: 650;
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
-.field-input::placeholder {
+.rows-table th code {
+  font-size: 11px;
+  padding: 0 4px;
+  background: rgba(99, 102, 241, 0.14);
+}
+
+.rows-table td {
+  border-bottom: 1px solid var(--border-soft);
+  padding: 0;
+}
+
+.rows-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.rows-table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.th-num {
+  width: 44px;
+  text-align: center !important;
+}
+
+.rows-table .row-num {
+  width: 44px;
+  padding: 0 4px !important;
+  text-align: center;
   color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 12px;
 }
 
-.field-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
+.rows-table .cell-input {
+  padding: 8px 10px;
 }
 
-.count-input.invalid,
-.field-input.invalid {
+.count-input.invalid {
   color: var(--err);
   border-color: rgba(248, 113, 113, 0.6);
   box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.12);
+}
+
+.rows-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .crit-list {

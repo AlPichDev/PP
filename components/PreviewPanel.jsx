@@ -1,15 +1,19 @@
 "use client";
 
+import { useMemo } from "react";
 import { highlightSQL } from "@/lib/sql";
 
 /** Панель предпросмотра: подсвеченный SQL, статистика, предупреждения, действия */
-export default function PreviewPanel({ sql, errors, limit, onCopy, onSave }) {
+export default function PreviewPanel({ sql, errors, limit, rowsInPackage, onCopy, onSave }) {
+  const html = useMemo(() => highlightSQL(sql), [sql]);
+
   return (
     <div className="card card-preview">
       <div className="card-head">
         <h2>Предпросмотр</h2>
         <div className="stats">
           <span className="stat">LIMIT: {limit}</span>
+          <span className="stat">строк в пакете: {rowsInPackage}</span>
           <span className="stat">8 UPDATE · 9 контрольных SELECT</span>
           <span className="stat">{sql.length} симв.</span>
         </div>
@@ -28,7 +32,7 @@ export default function PreviewPanel({ sql, errors, limit, onCopy, onSave }) {
       )}
 
       <pre className="code" aria-label="Сгенерированный SQL">
-        <code dangerouslySetInnerHTML={{ __html: highlightSQL(sql) }} />
+        <code dangerouslySetInnerHTML={{ __html: html }} />
       </pre>
 
       <div className="actions">

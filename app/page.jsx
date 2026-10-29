@@ -1,26 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   renderBatchSQL,
   validateForm,
   effectiveForm,
+  normalizeRows,
+  countPackageRows,
   SAVE_FILENAME,
   DEFAULT_LIMIT,
   MIN_LIMIT,
   MAX_LIMIT,
+  EMPTY_ROW,
 } from "@/lib/template";
 import { copyText, isDesktop, saveSqlFile } from "@/lib/desktop";
 import PreviewPanel from "@/components/PreviewPanel";
 
-const LS_STATE = "sqlform.auto.v4";
-
-const EMPTY_FORM = {
-  limit: String(DEFAULT_LIMIT),
-  ekpId: "",
-  overdueLoanAmount: "",
-  overdueInterestAmount: "",
-};
+const LS_STATE = "sqlform.auto.v5";
+const LS_STATE_V4 = "sqlform.auto.v4"; // миграция старой однострочной формы
 
 const INT_RE = /^\d+$/;
 const NUM_RE = /^-?\d+(?:\.\d+)?$/;
@@ -33,28 +30,42 @@ const clampLimit = (v) => {
 };
 
 export default function Home() {
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState({ limit: String(DEFAULT_LIMIT), rows: [] });
   const [toast, setToast] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [desktop, setDesktop] = useState(false);
   const toastTimer = useRef(null);
 
-  /* --- восстановление состояния после перезапуска --- */
+  /* --- восстановление состояния после перезапуска (с миграцией v4) --- */
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_STATE);
       if (raw) {
         const s = JSON.parse(raw);
-        setForm((prev) => ({
-          limit: s.limit != null ? String(s.limit) : prev.limit,
-          ekpId: s.ekpId != null ? String(s.ekpId) : prev.ekpId,
-          overdueLoanAmount:
-            s.overdueLoanAmount != null ? String(s.overdueLoanAmount) : prev.overdueLoanAmount,
-          overdueInterestAmount:
-            s.overdueInterestAmount != null
-              ? String(s.overdueInterestAmount)
-              : prev.overdueInterestAmount,
-        }));
+        setForm({
+          limit: s.limit != null ? String(s.limit) : String(DEFAULT_LIMIT),
+          rows: Array.isArray(s.rows) ? normalizeRows(s.rows) : [],
+        });
+      } else {
+        // старая форма (одно значение на пакет) → первая строка новой
+        const raw4 = localStorage.getItem(LS_STATE_V4);
+        if (raw4) {
+          const s4 = JSON.parse(raw4);
+          setForm({
+            limit: s4.limit != null ? String(s4.limit) : String(DEFAULT_LIMIT),
+            rows: [
+              {
+                ekpId: s4.ekpId != null ? String(s4.ekpId) : "",
+                loanAmount:
+                  s4.overdueLoanAmount != null ? String(s4.overdueLoanAmount) : "",
+                interestAmount:
+                  s4.overdueInterestAmount != null
+                    ? String(s4.overdueInterestAmount)
+                    : "",
+              },
+            ],
+          });
+        }
       }
     } catch {
       /* повреждённое состояние игнорируем */
@@ -80,24 +91,44 @@ export default function Home() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }, []);
 
+  /* --- редактирование строки пакета --- */
+  const setRow = useCallback((idx, field, value) => {
+    setForm((prev) => {
+      const rows = prev.rows.slice();
+      while (rows.length <= idx) rows.push({ ...EMPTY_ROW });
+      rows[idx] = { ...rows[idx], [field]: value };
+      return { ...prev, rows };
+    });
+  }, []);
+
   /* --- мгновенный предпросмотр: генерация полностью на клиенте --- */
-  const sql = renderBatchSQL(form);
-  const errors = validateForm(form);
-  const eff = effectiveForm(form);
+  const sql = useMemo(() => renderBatchSQL(form), [form]);
+  const errors = useMemo(() => validateForm(form), [form]);
+  const eff = useMemo(() => effectiveForm(form), [form]);
+  const inPackage = useMemo(() => countPackageRows(form), [form]);
+
+  /* --- видимые строки: ровно eff.limit штук (недостающие — пустые) --- */
+  const visibleRows = useMemo(() => {
+    const out = [];
+    for (let i = 0; i < eff.limit; i++) out.push(eff.rows[i] ?? EMPTY_ROW);
+    return out;
+  }, [eff]);
 
   /* --- подсветка некорректных полей --- */
   const limitStr = String(form.limit ?? "").trim();
   const limitOk =
     limitStr !== "" && INT_RE.test(limitStr) &&
     Number(limitStr) >= MIN_LIMIT && Number(limitStr) <= MAX_LIMIT;
-  const ekpStr = String(form.ekpId ?? "").trim();
-  const ekpOk = ekpStr !== "" && INT_RE.test(ekpStr);
-  const loanOk =
-    normNum(form.overdueLoanAmount) === "" ||
-    NUM_RE.test(normNum(form.overdueLoanAmount));
-  const intrOk =
-    normNum(form.overdueInterestAmount) === "" ||
-    NUM_RE.test(normNum(form.overdueInterestAmount));
+
+  const rowStates = useMemo(
+    () =>
+      visibleRows.map((row) => ({
+        ekpOk: row.ekpId !== "" && INT_RE.test(row.ekpId),
+        loanOk: row.loanAmount === "" || NUM_RE.test(row.loanAmount),
+        intrOk: row.interestAmount === "" || NUM_RE.test(row.interestAmount),
+      })),
+    [visibleRows],
+  );
 
   /* --- тосты --- */
   const showToast = useCallback((text, kind = "ok") => {
@@ -131,6 +162,20 @@ export default function Home() {
     }
   }, [sql, showToast]);
 
+  const onFillAll = useCallback(() => {
+    setForm((prev) => {
+      const first = prev.rows[0];
+      if (!first) return prev;
+      const n = clampLimit(prev.limit);
+      const rows = [];
+      for (let i = 0; i < Math.max(n, prev.rows.length); i++) {
+        rows.push({ ...first });
+      }
+      return { ...prev, rows };
+    });
+    showToast("Значения первой строки применены ко всем строкам");
+  }, [showToast]);
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -146,9 +191,10 @@ export default function Home() {
         <p className="subtitle">
           Скрипт сам отбирает договоры из loan_life_cycle (info_status_id = 11,
           life_stage_id = 3, assignment_reason = 7, EKPLA…, минуя revocation_loans)
-          с LIMIT из формы — ручной ввод ext_ref_a больше не нужен. Далее
-          8 UPDATE-ов и контрольные SELECT * по всем затрагиваемым таблицам;
-          счёт (20 симв.) и ucp_id (19 симв.) корректируются по длине
+          с LIMIT из формы — а значения (ЕКП и суммы просрочки) задаются построчно:
+          строка № i применяется к i-му отобранному договору. Далее 8 UPDATE-ов
+          и контрольные SELECT * по всем затрагиваемым таблицам; счёт (20 симв.)
+          и ucp_id (19 симв.) корректируются по длине
         </p>
       </header>
 
@@ -186,7 +232,10 @@ export default function Home() {
               >
                 +
               </button>
-              <span className="hint">сколько договоров выбрать (LIMIT, 1–{MAX_LIMIT})</span>
+              <span className="hint">
+                сколько договоров выбрать (LIMIT, 1–{MAX_LIMIT}) — по строке
+                значений на каждый договор
+              </span>
             </div>
             <ul className="crit-list" aria-label="Критерии отбора">
               <li>loan_life_cycle.is_deleted IS NOT NULL</li>
@@ -199,58 +248,87 @@ export default function Home() {
           <div className="card">
             <div className="card-head">
               <h2>Значения для обновления</h2>
-              <span className="stat">одно значение на весь пакет</span>
+              <span className="stat">по строке на каждый договор</span>
             </div>
 
-            <div className="field-row">
-              <label className="field-label" htmlFor="f-ekp">
-                Новый ЕКП — <code>loan.ekp_id</code>
-              </label>
-              <input
-                id="f-ekp"
-                className={`field-input ${ekpOk ? "" : "invalid"}`}
-                type="text"
-                inputMode="numeric"
-                placeholder="напр. 9001"
-                value={form.ekpId}
-                onChange={(e) => setField("ekpId", e.target.value)}
-              />
+            <div className="rows-wrap">
+              <table className="rows-table">
+                <thead>
+                  <tr>
+                    <th className="th-num">№</th>
+                    <th>
+                      Новый ЕКП <code>loan.ekp_id</code>
+                    </th>
+                    <th>
+                      Тело <code>overdue_loan_amount</code>
+                    </th>
+                    <th>
+                      Проценты <code>overdue_interest_amount</code>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleRows.map((row, i) => {
+                    const st = rowStates[i];
+                    return (
+                      <tr key={i}>
+                        <td className="row-num">{i + 1}</td>
+                        <td>
+                          <input
+                            className={`cell-input ${st.ekpOk ? "" : "invalid"}`}
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="напр. 9001"
+                            value={row.ekpId}
+                            onChange={(e) => setRow(i, "ekpId", e.target.value)}
+                            aria-label={`Строка ${i + 1}: новый ЕКП`}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            className={`cell-input ${st.loanOk ? "" : "invalid"}`}
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="пусто — не менять"
+                            value={row.loanAmount}
+                            onChange={(e) => setRow(i, "loanAmount", e.target.value)}
+                            aria-label={`Строка ${i + 1}: просрочка по телу`}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            className={`cell-input ${st.intrOk ? "" : "invalid"}`}
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="пусто — не менять"
+                            value={row.interestAmount}
+                            onChange={(e) => setRow(i, "interestAmount", e.target.value)}
+                            aria-label={`Строка ${i + 1}: просрочка по процентам`}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
-            <div className="field-row">
-              <label className="field-label" htmlFor="f-loan">
-                Просрочка по телу — <code>overdue_loan_amount</code>
-              </label>
-              <input
-                id="f-loan"
-                className={`field-input ${loanOk ? "" : "invalid"}`}
-                type="text"
-                inputMode="decimal"
-                placeholder="пусто — не менять, напр. 1500,50"
-                value={form.overdueLoanAmount}
-                onChange={(e) => setField("overdueLoanAmount", e.target.value)}
-              />
-            </div>
-
-            <div className="field-row">
-              <label className="field-label" htmlFor="f-intr">
-                Просрочка по процентам — <code>overdue_interest_amount</code>
-              </label>
-              <input
-                id="f-intr"
-                className={`field-input ${intrOk ? "" : "invalid"}`}
-                type="text"
-                inputMode="decimal"
-                placeholder="пусто — не менять, напр. 250,50"
-                value={form.overdueInterestAmount}
-                onChange={(e) => setField("overdueInterestAmount", e.target.value)}
-              />
+            <div className="rows-actions">
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={onFillAll}
+                disabled={eff.limit < 2 || !eff.rows[0]}
+                title="Скопировать значения первой строки во все строки пакета"
+              >
+                Применить первую строку ко всем
+              </button>
             </div>
 
             <p className="hint">
-              Суммы применяются ко всем отобранным договорам; пустое поле —
-              «не менять» (COALESCE оставит старое значение в БД), запятая
-              нормализуется к точке
+              Строка № i применяется к i-му отобранному договору (порядок отбора —
+              по ext_ref_a). Пустая сумма — «не менять» (COALESCE оставит старое
+              значение в БД), запятая нормализуется к точке. Строка без ЕКП
+              исключается из пакета — договор не попадёт в обновление
             </p>
           </div>
         </section>
@@ -260,6 +338,7 @@ export default function Home() {
             sql={sql}
             errors={errors}
             limit={eff.limit}
+            rowsInPackage={inPackage}
             onCopy={onCopy}
             onSave={onSave}
           />
@@ -267,8 +346,9 @@ export default function Home() {
       </main>
 
       <footer className="app-footer">
-        Electron + Next.js · генерация на клиенте · отсечение договоров
-        revocation_loans и корректировка длин выполняются внутри скрипта
+        Electron + Next.js · генерация на клиенте · построчные значения пакета ·
+        отсечение договоров revocation_loans и корректировка длин выполняются
+        внутри скрипта
       </footer>
 
       {toast && (
