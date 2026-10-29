@@ -182,6 +182,82 @@ code {
   font-family: var(--mono);
   font-size: 16px;
   font-weight: 650;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.count-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* ---------- Поля формы (авто-подбор договоров) ---------- */
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  flex-wrap: wrap;
+}
+
+.field-label {
+  flex: 0 0 300px;
+  min-width: 240px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+}
+
+.field-input {
+  flex: 1;
+  min-width: 200px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.field-input::placeholder {
+  color: var(--text-faint);
+}
+
+.field-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.count-input.invalid,
+.field-input.invalid {
+  color: var(--err);
+  border-color: rgba(248, 113, 113, 0.6);
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.12);
+}
+
+.crit-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.crit-list li::before {
+  content: "—";
+  color: var(--accent);
+  margin-right: 8px;
 }
 
 .btn-step {

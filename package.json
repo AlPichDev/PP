@@ -2,7 +2,7 @@
   "name": "sql-form-frontend",
   "version": "1.0.0",
   "private": true,
-  "description": "Интерфейс формы генератора SQL (собирается в статику для Wails)",
+  "description": "Интерфейс формы генератора SQL (статика для Electron)",
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",

@@ -1,24 +1,23 @@
 "use client";
 
 import { highlightSQL } from "@/lib/sql";
-import { COLS } from "@/lib/columns";
 
 /** Панель предпросмотра: подсвеченный SQL, статистика, предупреждения, действия */
-export default function PreviewPanel({ sql, errors, rowCount, onCopy, onSave }) {
+export default function PreviewPanel({ sql, errors, limit, onCopy, onSave }) {
   return (
     <div className="card card-preview">
       <div className="card-head">
         <h2>Предпросмотр</h2>
         <div className="stats">
-          <span className="stat">{rowCount} строк</span>
-          <span className="stat">{COLS.length} полей</span>
+          <span className="stat">LIMIT: {limit}</span>
+          <span className="stat">8 UPDATE · 9 контрольных SELECT</span>
           <span className="stat">{sql.length} симв.</span>
         </div>
       </div>
 
       {errors.length > 0 && (
         <div className="warn-box" role="status">
-          <strong>Проверьте данные:</strong>
+          <strong>Проверьте параметры:</strong>
           <ul className="warn-list">
             {errors.slice(0, 6).map((e, i) => (
               <li key={i}>{e}</li>
