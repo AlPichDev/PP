@@ -289,7 +289,7 @@ export default function Home() {
                             className={`cell-input ${st.loanOk ? "" : "invalid"}`}
                             type="text"
                             inputMode="decimal"
-                            placeholder="пусто — не менять"
+                            placeholder="прим - 1000000.00"
                             value={row.loanAmount}
                             onChange={(e) => setRow(i, "loanAmount", e.target.value)}
                             aria-label={`Строка ${i + 1}: просрочка по телу`}
@@ -300,7 +300,7 @@ export default function Home() {
                             className={`cell-input ${st.intrOk ? "" : "invalid"}`}
                             type="text"
                             inputMode="decimal"
-                            placeholder="пусто — не менять"
+                            placeholder="прим - 100.00"
                             value={row.interestAmount}
                             onChange={(e) => setRow(i, "interestAmount", e.target.value)}
                             aria-label={`Строка ${i + 1}: просрочка по процентам`}
