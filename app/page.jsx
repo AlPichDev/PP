@@ -178,26 +178,6 @@ export default function Home() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <h1>
-          SQL Form
-          <span className="badge">PostgreSQL</span>
-          {loaded && (
-            <span className={`badge ${desktop ? "" : "badge-ghost"}`}>
-              {desktop ? "Десктоп · Electron" : "Браузер · фолбэк"}
-            </span>
-          )}
-        </h1>
-        <p className="subtitle">
-          Скрипт сам отбирает договоры из loan_life_cycle (info_status_id = 11,
-          life_stage_id = 3, assignment_reason = 7, EKPLA…, минуя revocation_loans)
-          с LIMIT из формы — а значения (ЕКП и суммы просрочки) задаются построчно:
-          строка № i применяется к i-му отобранному договору. Далее 8 UPDATE-ов
-          и контрольные SELECT * по всем затрагиваемым таблицам; счёт (20 симв.)
-          и ucp_id (19 симв.) корректируются по длине
-        </p>
-      </header>
-
       <main className="grid">
         <section className="col" aria-label="Параметры пакета">
           <div className="card">
@@ -323,13 +303,6 @@ export default function Home() {
                 Применить первую строку ко всем
               </button>
             </div>
-
-            <p className="hint">
-              Строка № i применяется к i-му отобранному договору (порядок отбора —
-              по ext_ref_a). Пустая сумма — «не менять» (COALESCE оставит старое
-              значение в БД), запятая нормализуется к точке. Строка без ЕКП
-              исключается из пакета — договор не попадёт в обновление
-            </p>
           </div>
         </section>
 
@@ -344,12 +317,6 @@ export default function Home() {
           />
         </section>
       </main>
-
-      <footer className="app-footer">
-        Electron + Next.js · генерация на клиенте · построчные значения пакета ·
-        отсечение договоров revocation_loans и корректировка длин выполняются
-        внутри скрипта
-      </footer>
 
       {toast && (
         <div className={`toast ${toast.kind === "err" ? "toast-err" : ""}`} role="status">
